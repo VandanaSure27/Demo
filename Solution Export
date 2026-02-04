@@ -1,0 +1,59 @@
+name: CE Solution Automation
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # allows manual trigger
+
+jobs:
+  export-solution:
+    runs-on: windows-latest
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read
+    steps:
+      # 1. Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 2. Login to Azure using Federated Credentials (OIDC)
+      - name: Azure Login with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.8a37a94e-813c-4987-a911-5ee3f6411f26 }}
+          tenant-id: ${{ secrets.13588042-fe43-45bb-8ce1-83b2e6dd126c }}
+          subscription-id: ${{ secrets.d2697c63-21d7-4efc-8712-483b1a727dc4 }}
+
+      # 3. Setup Power Platform CLI
+      - name: Setup Power Platform CLI
+        uses: microsoft/powerplatform-actions/setup@v1
+
+      # 4. Authenticate to Dataverse using Service Principal (no secrets needed)
+      - name: Authenticate to Dataverse
+        run: pac auth create --url ${{ secrets.https://operations-ges-aiassets.crm.dynamics.com/ }} \
+                             --applicationId ${{ secrets.13310b41-8e21-4b0c-895d-d559cddd41b7 }} \
+                             --tenant ${{ secrets.13588042-fe43-45bb-8ce1-83b2e6dd126c }}
+
+      # 5. Export Solution from CE
+      - name: Export Solution
+        run: pac solution export --name Trial \
+                                 --outputDirectory ./solutions \
+                                 --includeVersion
+
+      # 6. Unpack Solution into source files
+      - name: Unpack Solution
+        run: pac solution unpack --zipFile ./solutions/Trial.zip \
+                                 --folder ./src/Trial \
+                                 --allowDelete true
+
+      # 7. Commit and Push changes back to GitHub
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "Automated export from CE"
+          git push
+
+ 
