@@ -1,56 +1,50 @@
-name: export-and-branch-solution
-# Export solution from DEV environment
-#  unpack it and prepare, commit and push a git branch with the changes
+name: CE Solution Automation
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-permissions:
-  contents: write
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  export-from-dev:
+  export-solution:
     runs-on: windows-latest
-    env:
-      RUNNER_DEBUG: 1
-
+    permissions:
+      id-token: write
+      contents: read
     steps:
-    - uses: actions/checkout@v2
-      with:
-        lfs: true
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: who-am-i action
-      uses: microsoft/powerplatform-actions/who-am-i@v0
-      with:
-        environment-url: 'https://user9-dev.crm.dynamics.com/'
-        user-name: 'user9@wrkdevops.onmicrosoft.com'
-        password-secret: ${{ secrets.password }}
+      - name: Setup .NET (for PAC)
+        uses: actions/setup-dotnet@v4
+        with:
+         dotnet-version: '9.x'
+ 
+      - name: Install Power Platform CLI (Marketplace)
+        uses: microsoft/powerplatform-actions/actions-install@v1.9.1
+        
 
-    - name: export-solution action
-      uses: microsoft/powerplatform-actions/export-solution@v0
-      with:
-        environment-url: 'https://user9-dev.crm.dynamics.com/'
-        user-name: 'user9@wrkdevops.onmicrosoft.com'
-        password-secret: ${{ secrets.password }}
-        solution-name: ALMLab
-        solution-output-file: out/exported/ALMLab.zip
+      - name: Authenticate to Dataverse
+        run: pac auth create --url ${{ secrets.CE_URL }} \
+                             --applicationId ${{ secrets.AZURE_CLIENT_ID }} \
+                             --tenant ${{ secrets.AZURE_TENANT_ID }}
+                             --githubFederated
 
-    - name: unpack-solution action
-      uses: microsoft/powerplatform-actions/unpack-solution@v0
-      with:
-        solution-file: out/exported/ALMLab.zip
-        solution-folder: out/solutions/ALMLab
-        solution-type: 'Unmanaged'
-        overwrite-files: true
+      - name: Export Solution
+        run: pac solution export --name Trial \
+                                 --outputDirectory ./solutions \
+                                 --includeVersion
 
-    - name: branch-solution, prepare it for a PullRequest
-      uses: microsoft/powerplatform-actions/branch-solution@v0
-      with:
-        solution-folder: out/solutions/ALMLab
-        solution-target-folder: solutions/ALMLab
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        allow-empty-commit: true
+      - name: Unpack Solution
+        run: pac solution unpack --zipFile ./solutions/Trial.zip \
+                                 --folder ./src/Trial \
+                                 --allowDelete true
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "Automated export from CE"
+          git push
