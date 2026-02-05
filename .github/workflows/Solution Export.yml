@@ -60,5 +60,8 @@ jobs:
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           solution-name: ${{ github.event.inputs.solution_name }}
+          solution-output-file: exported-solution.zip
+
+    
 
      
