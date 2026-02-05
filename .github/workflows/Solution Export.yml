@@ -15,7 +15,10 @@ on:
         options:
           - Trial
    
-
+permissions: 
+   id-token: write
+   contents: read
+   
 jobs:
   export-solution:
     runs-on: windows-latest
