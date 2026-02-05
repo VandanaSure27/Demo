@@ -37,7 +37,7 @@ jobs:
       - name: who-am-i
         uses: microsoft/powerplatform-actions/who-am-i@v1.9.1
         with:
-          environment-url: ${{ vars.CE_URL }}
+          environment-url: ${{ vars.ENVIRONMENT_URL }}
           app-id: ${{ secrets.AZURE_CLIENT_ID }}
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -46,7 +46,7 @@ jobs:
       - name: Publish Solution
         uses: microsoft/powerplatform-actions/publish-solution@v1.9.1
         with:
-          environment-url: ${{ vars.CE_URL }}
+          environment-url: ${{ vars.ENVIRONMENT_URL }}
           app-id: ${{ secrets.AZURE_CLIENT_ID }}
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
