@@ -1,10 +1,20 @@
 name: CE Solution Automation
 
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs: 
+     solution_name:
+        description: 'Name of the solution to work on from Power Platform'
+        required: true
+        default: Trial
+        type: choice
+        options:
+          - Trial
+   
 
 jobs:
   export-solution:
@@ -15,36 +25,32 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-
-      - name: Setup .NET (for PAC)
-        uses: actions/setup-dotnet@v4
-        with:
-         dotnet-version: '9.x'
  
       - name: Install Power Platform CLI (Marketplace)
         uses: microsoft/powerplatform-actions/actions-install@v1.9.1
-        
+ 
+      - name: who-am-i
+        uses: microsoft/powerplatform-actions/who-am-i@v1.9.1
+        with:
+          environment-url: ${{ vars.CE_URL }}
+          app-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          
+ 
+      - name: Publish Solution
+        uses: microsoft/powerplatform-actions/publish-solution@v1.9.1
+        with:
+          environment-url: ${{ vars.CE_URL }}
+          app-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+      
 
-      - name: Authenticate to Dataverse
-        run: pac auth create --url ${{ secrets.CE_URL }} \
-                             --applicationId ${{ secrets.AZURE_CLIENT_ID }} \
-                             --tenant ${{ secrets.AZURE_TENANT_ID }}
-                             --githubFederated
+      - name: Export Unmanaged Solution
+        uses: microsoft/powerplatform-actions/export-solution@v1.9.1
+        with:
+          environment-url: ${{ vars.ENVIRONMENT_URL }}
+          app-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          solution-name: ${{ github.event.inputs.solution_name }}
 
-      - name: Export Solution
-        run: pac solution export --name Trial \
-                                 --outputDirectory ./solutions \
-                                 --includeVersion
-
-      - name: Unpack Solution
-        run: pac solution unpack --zipFile ./solutions/Trial.zip \
-                                 --folder ./src/Trial \
-                                 --allowDelete true
-
-      - name: Commit and Push
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add .
-          git diff --cached --quiet || git commit -m "Automated export from CE"
-          git push
+     
