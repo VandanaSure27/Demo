@@ -11,6 +11,7 @@ on:
         description: 'Name of the solution to work on from Power Platform'
         required: true
         default: Trial
+        solution_exported_folder: description: 'Folder path where the solution should be exported' required: true default: ./export/
         type: choice
         options:
           - Trial
@@ -51,17 +52,14 @@ jobs:
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
       
-
       - name: Export Unmanaged Solution
-        uses: microsoft/powerplatform-actions/export-solution@v1.9.1
+        uses: microsoft/powerplatform-actions/export-solution@v1
         with:
           environment-url: ${{ vars.ENVIRONMENT_URL }}
           app-id: ${{ secrets.AZURE_CLIENT_ID }}
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           solution-name: ${{ github.event.inputs.solution_name }}
-          solution-output-file: exported-solution.zip
-
-    
-
+          solution-output-file: ${{ github.event.inputs.solution_exported_folder }}${{ github.event.inputs.solution_name }}
+          managed: false
      
