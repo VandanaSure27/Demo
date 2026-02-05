@@ -28,9 +28,7 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      # 2. Login to Azure using Federated Credentials (OIDC)
-      - name: Azure Login with OIDC
-        uses: azure/login@v1
+      
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           secret-id: ${{ secrets.AZURE_CLIENT_ID }}
