@@ -1,5 +1,5 @@
 name: Deploy Logic App (Azure)
- 
+
 on:
   workflow_dispatch:
   push:
@@ -7,25 +7,25 @@ on:
       - main
     paths:
       - INFRA/**
- 
+
 permissions:
   id-token: write    # REQUIRED for OIDC
   contents: read
- 
+
 env:
   AZURE_SUBSCRIPTION_ID: "f654ae1e-a7e6-4898-bdf3-f1cce60417ae"
   RESOURCE_GROUP: "rg-logicapps-test"
   LOCATION: "westeurope"
-  # LOGIC_APP_NAME: "swtest"
- 
+  LOGIC_APP_NAME: "swtest"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
- 
+
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -33,14 +33,15 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-     # - name: Create Resource Group
-     #   uses: azure/cli@v2
-     #   with:
-     #    inlineScript: |
-     #       az group create \
-     #        --name ${{ env.RESOURCE_GROUP }} \
-     #        --location ${{ env.LOCATION }}
- 
+      # Optional: Create resource group if not already present
+      - name: Create Resource Group
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az group create \
+              --name ${{ env.RESOURCE_GROUP }} \
+              --location ${{ env.LOCATION }}
+
       - name: Deploy Logic App using Bicep
         uses: azure/arm-deploy@v2
         with:
@@ -49,5 +50,5 @@ jobs:
           template: INFRA/LogicApp.bicep
           parameters: |
             location=${{ env.LOCATION }}
-            logicAppName=SWTest
+            logicAppName=${{ env.LOGIC_APP_NAME }}
           deploymentMode: Incremental
