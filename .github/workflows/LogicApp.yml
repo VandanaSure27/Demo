@@ -16,7 +16,7 @@ env:
   AZURE_SUBSCRIPTION_ID: "f654ae1e-a7e6-4898-bdf3-f1cce60417ae"
   RESOURCE_GROUP: "rg-logicapps-test"
   LOCATION: "westeurope"
-  LOGIC_APP_NAME: "swtest"
+  # LOGIC_APP_NAME: "swtest"
  
 jobs:
   deploy:
@@ -49,5 +49,5 @@ jobs:
           template: INFRA/LogicApp.bicep
           parameters: |
             location=${{ env.LOCATION }}
-            logicAppName=${{ env.LOGIC_APP_NAME }}
+            logicAppName=SWTest
           deploymentMode: Incremental
