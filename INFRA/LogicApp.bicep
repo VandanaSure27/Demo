@@ -7,7 +7,7 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
   properties: {
     state: 'Enabled'
     definition: {
-      '$schema': 'https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2019-05-01/workflowdefinition.json#%27
+      '$schema': 'https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2019-05-01/workflowdefinition.json#'
       contentVersion: '1.0.0.0'
       triggers: {}
       actions: {}
