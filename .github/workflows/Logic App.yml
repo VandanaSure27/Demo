@@ -1,33 +1,29 @@
-name: CI/CD Logic App Deployment
+name: Deploy Logic App
 
 on:
   push:
-    branches: [ main ]
-
-permissions:
-  id-token: write   # Required for OIDC federated credentials
-  contents: read
+    branches:
+      - main
 
 jobs:
-  deploy-dev:
-    runs-on: windows-latest
-    environment: dev
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  deploy-logicapp:
+    runs-on: ubuntu-latest
 
-      - name: Azure Login (OIDC)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure using OIDC
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy Logic App (Dev)
-        run: |
-          az deployment group create \
-            --resource-group rg-dev \
-            --template-file infra/logicapp.bicep \
-            --parameters logicAppName=my-logicapp-dev
-
-  
+      - name: Deploy Logic App
+        uses: azure/arm-deploy@v1
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          resourceGroupName: myResourceGroup
+          template: ./logicapp.json
+          parameters: ./logicapp.parameters.json
