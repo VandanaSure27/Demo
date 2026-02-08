@@ -47,7 +47,7 @@ jobs:
         with:
           scope: resourcegroup
           resourceGroupName: ${{ env.RESOURCE_GROUP }}
-          template: INFRA/LogicApp.bicep
+          template: infra/logicapp.bicep
           parameters: |
             location=${{ env.LOCATION }}
             logicAppName=${{ env.LOGIC_APP_NAME }}
