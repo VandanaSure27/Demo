@@ -33,20 +33,20 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Create Resource Group
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az group create \
-              --name ${{ env.RESOURCE_GROUP }} \
-              --location ${{ env.LOCATION }}
+     # - name: Create Resource Group
+     #   uses: azure/cli@v2
+     #   with:
+     #    inlineScript: |
+     #       az group create \
+     #        --name ${{ env.RESOURCE_GROUP }} \
+     #        --location ${{ env.LOCATION }}
  
       - name: Deploy Logic App using Bicep
         uses: azure/arm-deploy@v2
         with:
           scope: resourcegroup
           resourceGroupName: ${{ env.RESOURCE_GROUP }}
-          template: INFRA/logicapp.bicep
+          template: INFRA/LogicApp.bicep
           parameters: |
             location=${{ env.LOCATION }}
             logicAppName=${{ env.LOGIC_APP_NAME }}
