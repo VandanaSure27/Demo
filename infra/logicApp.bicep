@@ -2,7 +2,7 @@ param location string
 param logicAppName string
  
 resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
-  name: logicAppName
+  logicAppName: LogicAppName
   location: location
   properties: {
     state: 'Enabled'
