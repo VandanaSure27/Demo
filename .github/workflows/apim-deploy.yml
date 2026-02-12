@@ -1,0 +1,41 @@
+name: Deploy APIM APIs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to Dev
+        run: az apim api import --resource-group rg-dev --service-name apim-dev --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
+
+  deploy-uat:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: UAT
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to UAT
+        run: az apim api import --resource-group rg-uat --service-name apim-uat --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
+
+  deploy-prod:
+    needs: deploy-uat
+    runs-on: ubuntu-latest
+    environment: Prod
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to Prod
+        run: az apim api import --resource-group rg-prod --service-name apim-prod --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
