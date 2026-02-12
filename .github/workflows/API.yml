@@ -1,33 +1,41 @@
-name: Deploy API
+name: Deploy APIM APIs
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  build:
+  deploy-dev:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to Dev
+        run: az apim api import --resource-group rg-dev --service-name apim-dev --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+  deploy-uat:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: UAT
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to UAT
+        run: az apim api import --resource-group rg-uat --service-name apim-uat --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
 
-    - name: Install dependencies
-      run: npm install
-
-    - name: Run tests
-      run: npm test
-
-    - name: Build Docker image
-      run: docker build -t my-api .
-
-    - name: Push to DockerHub
-      run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker tag my-api mydockerhubuser/my-api:latest
-        docker push mydockerhubuser/my-api:latest
+  deploy-prod:
+    needs: deploy-uat
+    runs-on: ubuntu-latest
+    environment: Prod
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy to Prod
+        run: az apim api import --resource-group rg-prod --service-name apim-prod --path hello --specification-format OpenApi --specification-path ./apis/hello-api.json
