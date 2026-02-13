@@ -1,7 +1,7 @@
 name: APIM Dev Export
  
 on:
-  workflow_dispatch:
+  workflow_dispatch: 
  
 permissions:
   id-token: write
