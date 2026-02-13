@@ -22,14 +22,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
  
-      - name: Export API from DEV APIM (ARM)
+      - name: Export API from DEV APIM 
         run: |
           az apim api export \
             --resource-group ${{ secrets.DEV_RG }} \
             --service-name ${{ secrets.DEV_APIM }} \
             --api-id ${{ vars.API_NAME }} \
             --export-format OpenApiJsonFile \
-            --file-path infra/API's
+            --file-path infra/APIM
  
       - name: Verify Export
         run: |
@@ -41,6 +41,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add infra/API's/
+          git add infra/APIM/
           git commit -m "Auto export from DEV APIM" || echo "No changes"
           git push
