@@ -1,7 +1,7 @@
 name: Run - Extractor
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
     inputs: 
       CONFIGURATION_YAML_PATH:
         description: 'Choose Wether to extract all Apis or extract apis listed an extraction configuration file'     
