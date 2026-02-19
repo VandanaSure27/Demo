@@ -22,9 +22,9 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Install APIM DevOps Toolkit
-      run: |
-        dotnet tool install --global Microsoft.Azure.ApiManagement.DevOps.ResourceKit
+    #- name: Install APIM DevOps Toolkit
+    #  run: |
+    #    dotnet tool install --global Microsoft.Azure.ApiManagement.DevOps.ResourceKit
 
     - name: Run Extractor
       run: |
