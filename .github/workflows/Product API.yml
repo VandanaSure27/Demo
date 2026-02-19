@@ -26,6 +26,16 @@ jobs:
     #  run: |
     #    dotnet tool install --global Microsoft.Azure.ApiManagement.DevOps.ResourceKit
 
+      # Setup Node.js
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    #  Install APIM DevOps Toolkit
+    - name: Install APIM DevOps Toolkit
+      run: npm install -g @azure/apim-devops-toolkit
+
     - name: Run Extractor
       run: |
         extractor \
