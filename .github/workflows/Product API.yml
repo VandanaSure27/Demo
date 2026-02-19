@@ -27,22 +27,36 @@ jobs:
     #    dotnet tool install --global Microsoft.Azure.ApiManagement.DevOps.ResourceKit
 
       # Setup Node.js
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+  #  - name: Setup Node
+  #    uses: actions/setup-node@v4
+  #   with:
+  #      node-version: '18'
 
-    #  Install APIM DevOps Toolkit
-    - name: Install APIM DevOps Toolkit
-      run: npm install -g @azure/apim-devops-toolkit
+   #  Install APIM DevOps Toolkit
+   # - name: Install APIM DevOps Toolkit
+   #   run: npm install -g @azure/apim-devops-toolkit
 
-    - name: Run Extractor
+
+    - name: Run Microsoft APIM DevOps Extractor
       run: |
-        extractor \
+        docker run --rm \
+          -v ${{ github.workspace }}:/app \
+          mcr.microsoft.com/azure-api-management/devops-resource-kit \
+          extract \
           --sourceApimName ${{ secrets.DEV_APIM }} \
           --resourceGroup ${{ secrets.DEV_RG }} \
           --fileFolder ./infra \
-          --productNames ${{ secrets.Product_name }} 
+          --apiNames ${{ secrets.DEV_APIM }} \
+          --productNames ${{ secrets.Product_name }} \
+          --subscriptionId ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+   # - name: Run Extractor
+   #   run: |
+   #     extractor \
+   #       --sourceApimName ${{ secrets.DEV_APIM }} \
+   #      --resourceGroup ${{ secrets.DEV_RG }} \
+   #       --fileFolder ./infra \
+  #      --productNames ${{ secrets.Product_name }} 
 
     - name: Commit Extracted Files
       run: |
