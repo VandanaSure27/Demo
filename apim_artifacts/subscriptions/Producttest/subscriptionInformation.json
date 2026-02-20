@@ -1,0 +1,9 @@
+{
+  "properties": {
+    "displayName": "Product Order Product subscription",
+    "scope": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/products/order-product",
+    "allowTracing": false,
+    "ownerId": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/users/1",
+    "state": "active"
+  }
+}
