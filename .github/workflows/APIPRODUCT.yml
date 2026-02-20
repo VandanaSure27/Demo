@@ -72,7 +72,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          BRANCH_NAME="extract-${{ inputs.apim_name }}-$(date +%Y%m%d%H%M)"
+          BRANCH_NAME="Feature-${{ inputs.apim_name }}-$(date +%Y%m%d%H%M)"
           git checkout -b $BRANCH_NAME
           git add apim_artifacts
           if git diff --staged --quiet; then
