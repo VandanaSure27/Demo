@@ -1,70 +1,85 @@
-name: Run - Publisher
-
+name: Publish APIM Settings
+ 
 on:
-  # Triggers the workflow on push events but only for the main branch
-  push:
-    branches: [main]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      COMMIT_ID_CHOICE:
-        description: 'Choose "publish-all-artifacts-in-repo" only when you want to force republishing all artifacts (e.g. after build failure). Otherwise stick with the default behavior of "publish-artifacts-in-last-commit"'
+      target_apim_name:
+        description: 'Target APIM Name'
         required: true
-        type: choice
-        default: "publish-artifacts-in-last-commit"
-        options:
-          - "publish-artifacts-in-last-commit"
-          - "publish-all-artifacts-in-repo"
-
+      target_resource_group:
+        description: 'Target Resource Group'
+        required: true
+      source_folder:
+        description: 'Folder containing artifacts'
+        required: true
+        default: 'apim_artifacts'
+ 
+permissions:
+  id-token: write
+  contents: read
+ 
 jobs:
-  get-commit:
+  publish:
     runs-on: ubuntu-latest
+ 
+    env:
+      GH_TOKEN: ${{ github.token }}
+      AZURE_RESOURCE_GROUP_NAME: ${{ inputs.target_resource_group }}
+      API_MANAGEMENT_SERVICE_NAME: ${{ inputs.target_apim_name }}
+      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: ${{ inputs.source_folder }}
+      API_SPECIFICATION_FORMAT: 'OpenAPIV3Yaml'
+ 
     steps:
-      # Set the COMMIT_ID env variable
-      - name: Set the Commit Id
-        id: commit
-        run: echo "commit_id=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-    outputs:
-      commit_id: ${{ steps.commit.outputs.commit_id }}
-  #Publish with Commit ID
-  Push-Changes-To-APIM-Dev-With-Commit-ID:
-    if: (github.event.inputs.COMMIT_ID_CHOICE == 'publish-artifacts-in-last-commit' || github.event.inputs.COMMIT_ID_CHOICE == '')
-    needs: get-commit
-    uses: ./.github/workflows/run-publisher-with-env.yaml
-    with:
-      API_MANAGEMENT_ENVIRONMENT: dev # change this to match the dev environment created in settings
-      COMMIT_ID: ${{ needs.get-commit.outputs.commit_id }}
-      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: apimartifacts # change this to the artifacts folder
-    secrets: inherit
-
-  #Publish without Commit ID. Publishes all artifacts that reside in the artifacts folder
-  Push-Changes-To-APIM-Dev-Without-Commit-ID:
-    if: ( github.event.inputs.COMMIT_ID_CHOICE == 'publish-all-artifacts-in-repo' )
-    needs: get-commit
-    uses: ./.github/workflows/run-publisher-with-env.yaml
-    with:
-      API_MANAGEMENT_ENVIRONMENT: dev # change this to match the dev environment created in settings
-      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: apimartifacts # change this to the artifacts folder
-    secrets: inherit
-
-  Push-Changes-To-APIM-Prod-With-Commit-ID:
-    if: (github.event.inputs.COMMIT_ID_CHOICE == 'publish-artifacts-in-last-commit' || github.event.inputs.COMMIT_ID_CHOICE == '')
-    needs: [get-commit, Push-Changes-To-APIM-Dev-With-Commit-ID]
-    uses: ./.github/workflows/run-publisher-with-env.yaml
-    with:
-      API_MANAGEMENT_ENVIRONMENT: prod # change this to match the prod environment created in settings
-      CONFIGURATION_YAML_PATH: configuration.prod.yaml # make sure the file is available at the root
-      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: apimartifacts # change this to the artifacts folder
-      COMMIT_ID: ${{ needs.get-commit.outputs.commit_id }}
-    secrets: inherit
-
-  Push-Changes-To-APIM-Prod-Without-Commit-ID:
-    if: ( github.event.inputs.COMMIT_ID_CHOICE == 'publish-all-artifacts-in-repo' )
-    needs: [get-commit, Push-Changes-To-APIM-Dev-Without-Commit-ID]
-    uses: ./.github/workflows/run-publisher-with-env.yaml
-    with:
-      API_MANAGEMENT_ENVIRONMENT: prod # change this to match the prod environment created in settings
-      CONFIGURATION_YAML_PATH: configuration.prod.yaml # make sure the file is available at the root
-      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: apimartifacts # change this to the artifacts folder
-    secrets: inherit
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+ 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+ 
+      # 1. Set Context Variables
+      - name: Set Azure Context Variables
+        run: |
+          SUB_ID=$(az account show --query id -o tsv)
+          echo "AZURE_SUBSCRIPTION_ID=$SUB_ID" >> $GITHUB_ENV
+ 
+          TENANT_ID=$(az account show --query tenantId -o tsv)
+          echo "AZURE_TENANT_ID=$TENANT_ID" >> $GITHUB_ENV
+          TOKEN=$(az account get-access-token --query accessToken -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "AZURE_BEARER_TOKEN=$TOKEN" >> $GITHUB_ENV
+ 
+      # 2. Fetch the Publisher Tool
+      - name: Fetch Latest APIOps Publisher
+        run: |
+          echo "Fetching the latest APIOps release..."
+          gh release download --repo Azure/apiops --pattern "publisher-linux-x64.zip" --clobber
+          echo "Unzipping..."
+          unzip -o publisher-linux-x64.zip -d publisher_tool
+          chmod +x publisher_tool/publisher
+          echo "Publisher tool ready."
+ 
+      # --- THE FIX IS HERE ---
+      # We remove the 'subscriptions' folder so we don't try to copy API Keys to Prod
+      - name: Clean Artifacts (Exclude Subscriptions)
+        run: |
+          echo "Removing subscriptions from artifacts to avoid owner limits..."
+          if [ -d "${{ inputs.source_folder }}/subscriptions" ]; then
+            rm -rf "${{ inputs.source_folder }}/subscriptions"
+            echo "Successfully removed subscriptions folder."
+          else
+            echo "No subscriptions folder found. Skipping."
+          fi
+          # Optional: You might also want to exclude 'users' to avoid conflicts
+          if [ -d "${{ inputs.source_folder }}/users" ]; then
+            rm -rf "${{ inputs.source_folder }}/users"
+            echo "Successfully removed users folder."
+          fi
+ 
+      # 3. Run Publisher
+      - name: Run Publisher
+        run: |
+          ./publisher_tool/publisher
