@@ -6,7 +6,7 @@ on:
       apim_name:
         description: 'Source APIM Name'
         required: true
-        default: 'SW-apim-dev-test'
+        default: 'SW-apim-dev-test' 
       resource_group:
         description: 'Resource Group Name'
         required: true
