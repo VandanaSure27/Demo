@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "path": "Hello",
+    "apiRevision": "1",
+    "authenticationSettings": {},
+    "isCurrent": true,
+    "displayName": "Hello API",
+    "protocols": [
+      "http",
+      "https"
+    ],
+    "subscriptionKeyParameterNames": {
+      "header": "Ocp-Apim-Subscription-Key",
+      "query": "subscription-key"
+    },
+    "subscriptionRequired": true
+  }
+}
