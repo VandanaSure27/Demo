@@ -6,17 +6,10 @@ on:
       apim_name:
         description: 'Source APIM Name'
         required: true
-        default: 'SW-apim-dev-test' 
+        default: 'SW-apim-dev-test'
       resource_group:
         description: 'Resource Group Name'
         required: true
-      api_name:
-        description: 'api name'
-        required: true
-      Product_name: 
-       description: 'Product Name'
-       required: true
-    
  
 permissions:
   id-token: write
