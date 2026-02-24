@@ -1,0 +1,9 @@
+{
+  "properties": {
+    "displayName": "Premium-Orders",
+    "description": "Product Premium Orders",
+    "approvalRequired": false,
+    "state": "published",
+    "subscriptionRequired": true
+  }
+}

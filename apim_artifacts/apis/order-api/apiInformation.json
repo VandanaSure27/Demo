@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "path": "orders",
+    "apiRevision": "1",
+    "authenticationSettings": {},
+    "description": "Demo_latest",
+    "isCurrent": true,
+    "displayName": "Order API",
+    "protocols": [
+      "https"
+    ],
+    "serviceUrl": "https://testgithub-bgd6hdf9b6d4apbx.eastus-01.azurewebsites.net",
+    "subscriptionKeyParameterNames": {
+      "header": "Ocp-Apim-Subscription-Key",
+      "query": "subscription-key"
+    },
+    "subscriptionRequired": true
+  }
+}

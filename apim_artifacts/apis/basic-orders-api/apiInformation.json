@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "path": "basicorders",
+    "apiRevision": "1",
+    "authenticationSettings": {},
+    "description": "",
+    "isCurrent": true,
+    "displayName": "Basic-Orders-API",
+    "protocols": [
+      "https"
+    ],
+    "serviceUrl": "https://githubswtest.azurewebsites.net",
+    "subscriptionKeyParameterNames": {
+      "header": "Ocp-Apim-Subscription-Key",
+      "query": "subscription-key"
+    },
+    "subscriptionRequired": true
+  }
+}
