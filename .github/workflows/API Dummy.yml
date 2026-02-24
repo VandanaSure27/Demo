@@ -69,12 +69,3 @@ jobs:
         with:
           name: apim-export
           path: infra/APIM/
-
-
-      - name: Commit exported artifacts
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add infra/APIM/
-          git commit -m "Selective export from DEV APIM" || echo "No changes"
-          git push
