@@ -60,6 +60,7 @@ jobs:
           unzip -o extractor-linux-x64.zip -d extractor_tool
           chmod +x extractor_tool/extractor
 
+      # --- Selective Extraction ---
       - name: Run Extractor (Selective)
         run: |
           case "${{ inputs.resource_type }}" in
@@ -68,6 +69,7 @@ jobs:
                 --sourceApimName ${{ inputs.apim_name }} \
                 --resourceGroup ${{ inputs.resource_group }} \
                 --apiName ${{ inputs.resource_name }} \
+                --extractSingleApi true \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
@@ -76,6 +78,7 @@ jobs:
                 --sourceApimName ${{ inputs.apim_name }} \
                 --resourceGroup ${{ inputs.resource_group }} \
                 --productName ${{ inputs.resource_name }} \
+                --extractSingleProduct true \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
@@ -85,6 +88,7 @@ jobs:
                 --resourceGroup ${{ inputs.resource_group }} \
                 --apiName ${{ inputs.resource_name }} \
                 --extractApiPolicy true \
+                --extractSingleApi true \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
