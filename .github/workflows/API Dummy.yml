@@ -64,6 +64,13 @@ jobs:
           echo "Files in infra/APIM:"
           ls -la infra/APIM
 
+      - name: Upload Exported Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apim-export
+          path: infra/APIM/
+
+
       - name: Commit exported artifacts
         run: |
           git config user.name "github-actions[bot]"
