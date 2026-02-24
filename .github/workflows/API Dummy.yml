@@ -32,30 +32,36 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Normalize resource name (replace spaces)
+        id: normalize
+        run: |
+          SAFE_NAME=$(echo "${{ github.event.inputs.resource_name }}" | tr ' ' '_')
+          echo "SAFE_NAME=$SAFE_NAME" >> $GITHUB_ENV
+
       - name: Selective Export from DEV APIM
         run: |
           case "${{ github.event.inputs.resource_type }}" in
             api)
               az apim api export \
-                --resource-group ${{ secrets.DEV_RG }} \
-                --service-name ${{ secrets.DEV_APIM }} \
-                --api-id ${{ github.event.inputs.resource_name }} \
+                --resource-group "${{ secrets.DEV_RG }}" \
+                --service-name "${{ secrets.DEV_APIM }}" \
+                --api-id "${{ github.event.inputs.resource_name }}" \
                 --export-format OpenApiJsonFile \
-                --file-path infra/APIM/${{ github.event.inputs.resource_name }}.json
+                --file-path "infra/APIM/${SAFE_NAME}.json"
               ;;
             product)
               az apim product show \
-                --resource-group ${{ secrets.DEV_RG }} \
-                --service-name ${{ secrets.DEV_APIM }} \
-                --product-id ${{ github.event.inputs.resource_name }} \
-                > infra/APIM/${{ github.event.inputs.resource_name }}-product.json
+                --resource-group "${{ secrets.DEV_RG }}" \
+                --service-name "${{ secrets.DEV_APIM }}" \
+                --product-id "${{ github.event.inputs.resource_name }}" \
+                > "infra/APIM/${SAFE_NAME}-product.json"
               ;;
             policy)
               az apim api policy show \
-                --resource-group ${{ secrets.DEV_RG }} \
-                --service-name ${{ secrets.DEV_APIM }} \
-                --api-id ${{ github.event.inputs.resource_name }} \
-                > infra/APIM/${{ github.event.inputs.resource_name }}-policy.xml
+                --resource-group "${{ secrets.DEV_RG }}" \
+                --service-name "${{ secrets.DEV_APIM }}" \
+                --api-id "${{ github.event.inputs.resource_name }}" \
+                > "infra/APIM/${SAFE_NAME}-policy.xml"
               ;;
           esac
 
