@@ -68,8 +68,7 @@ jobs:
               ./extractor_tool/extractor \
                 --sourceApimName ${{ inputs.apim_name }} \
                 --resourceGroup ${{ inputs.resource_group }} \
-                --apiName ${{ inputs.resource_name }} \
-                --extractSingleApi true \
+                --singleApiName ${{ inputs.resource_name }} \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
@@ -77,8 +76,7 @@ jobs:
               ./extractor_tool/extractor \
                 --sourceApimName ${{ inputs.apim_name }} \
                 --resourceGroup ${{ inputs.resource_group }} \
-                --productName ${{ inputs.resource_name }} \
-                --extractSingleProduct true \
+                --singleProductName ${{ inputs.resource_name }} \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
@@ -86,9 +84,8 @@ jobs:
               ./extractor_tool/extractor \
                 --sourceApimName ${{ inputs.apim_name }} \
                 --resourceGroup ${{ inputs.resource_group }} \
-                --apiName ${{ inputs.resource_name }} \
+                --singleApiName ${{ inputs.resource_name }} \
                 --extractApiPolicy true \
-                --extractSingleApi true \
                 --token $AZURE_BEARER_TOKEN \
                 --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
               ;;
