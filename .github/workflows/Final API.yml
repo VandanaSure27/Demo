@@ -29,7 +29,7 @@ jobs:
           RG="${{ secrets.DEV_RG }}"
           APIM="${{ secrets.DEV_APIM }}"
 
-          BASE_DIR="export/APIM"
+          BASE_DIR="export"
           TEMP_DIR="temp_compare"
 
           mkdir -p "$BASE_DIR/apis"
