@@ -1,86 +1,105 @@
-name: APIM Dev Export
-
+name: Sync APIM Dev Export
+ 
 on:
   workflow_dispatch:
     inputs:
-      apim_name:
-        description: 'Source APIM Name'
-        required: true 
-      resource_type:
-        description: 'Type of resource to export (api, product, policy)'
+      api_or_product_id:
+        description: "API ID OR Product ID in APIM"
         required: true
-        default: 'api'
-      resource_name:
-        description: 'Name/ID of the resource (e.g., my-api, my-product)'
+      export_type:
+        description: "Select what to export"
         required: true
-
+        type: choice
+        options:
+          - api
+          - api-policy
+          - product
+          - product-apis
+          - all
+ 
 permissions:
   id-token: write
-  contents: write 
-
+  contents: write
+ 
 jobs:
-  export-deploy:
-    runs-on: ubuntu-latest 
+  export-apim:
+    runs-on: ubuntu-latest
+ 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Azure Login
+ 
+      - name: Azure Login (OIDC Recommended)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Normalize resource name (replace spaces)
-        id: normalize
+ 
+      - name: Create export folder
+        run: mkdir -p export
+ 
+      - name: Export from DEV APIM
         run: |
-          SAFE_NAME=$(echo "${{ github.event.inputs.resource_name }}" | tr ' ' '_')
-          echo "SAFE_NAME=$SAFE_NAME" >> $GITHUB_ENV
-
-      - name: Selective Export from DEV APIM
-        run: |
-          case "${{ github.event.inputs.resource_type }}" in
-            api)
-              az apim api export \
-                --resource-group "${{ secrets.DEV_RG }}" \
-                --service-name "${{ secrets.DEV_APIM }}" \
-                --api-id "${{ github.event.inputs.resource_name }}" \
-                --export-format OpenApiJsonFile \
-                --file-path "infra/APIM/${SAFE_NAME}.json"
-              ;;
-            product)
-              az apim product show \
-                --resource-group "${{ secrets.DEV_RG }}" \
-                --service-name "${{ secrets.DEV_APIM }}" \
-                --product-id "${{ github.event.inputs.resource_name }}" \
-                > "infra/APIM/${SAFE_NAME}-product.json"
-              ;;
-            policy)
-              az apim api policy show \
-                --resource-group "${{ secrets.DEV_RG }}" \
-                --service-name "${{ secrets.DEV_APIM }}" \
-                --api-id "${{ github.event.inputs.resource_name }}" \
-                > "infra/APIM/${SAFE_NAME}-policy.xml"
-              ;;
-          esac
-
+          set -e
+ 
+          echo "Export Type: ${{ github.event.inputs.export_type }}"
+          echo "Target: ${{ github.event.inputs.api_or_product_id }}"
+ 
+          RG="${{ secrets.DEV_RG }}"
+          APIM="${{ secrets.DEV_APIM }}"
+          ID="${{ github.event.inputs.api_or_product_id }}"
+          TYPE="${{ github.event.inputs.export_type }}"
+ 
+          # Safe file name (replace spaces with dashes)
+          SAFE_ID=$(echo "$ID" | tr ' ' '-')
+ 
+          if [ "$TYPE" = "api" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting API..."
+            az apim api export \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --api-id "$ID" \
+              --export-format OpenApiJsonFile \
+              --file-path "export/${SAFE_ID}.json"
+          fi
+ 
+          if [ "$TYPE" = "api-policy" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting API Policy..."
+            az apim api policy show \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --api-id "$ID" \
+              --format rawxml > "export/${SAFE_ID}-policy.xml"
+          fi
+ 
+          if [ "$TYPE" = "product" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Product..."
+            az apim product show \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --product-id "$ID" \
+              --output json > "export/${SAFE_ID}-product.json"
+          fi
+ 
+          if [ "$TYPE" = "product-apis" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Product APIs..."
+            az apim product api list \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --product-id "$ID" \
+              --output json > "export/${SAFE_ID}-product-apis.json"
+          fi
+ 
       - name: Verify Export
         run: |
-          echo "Files in infra/APIM:"
-          ls -la infra/APIM
-
-      - name: Commit and Push
+          echo "Exported Files:"
+          ls -la export
+ 
+      - name: Commit Exported Files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          BRANCH_NAME="Feature-${{ inputs.apim_name }}-$(date +%Y%m%d%H%M)"
-          git checkout -b $BRANCH_NAME
-          git add apim_artifacts
-          if git diff --staged --quiet; then
-            echo "No changes detected."
-          else
-            git commit -m "Extract APIM settings from ${{ inputs.apim_name }}"
-            git push origin $BRANCH_NAME
-            echo "::notice::Extraction complete! Check branch '$BRANCH_NAME' for your files."
-            fi  
+          git add export/
+          git commit -m "Auto export from DEV APIM" || echo "No changes detected"
+          git push
