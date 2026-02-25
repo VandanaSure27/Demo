@@ -1,7 +1,17 @@
-name: Sync APIM Dev Export
+name: APIM Full Git Sync
 
 on:
   workflow_dispatch:
+    inputs:
+      export_type:
+        description: "Select what to export"
+        required: true
+        type: choice
+        options:
+          - service
+          - apis
+          - products
+          - all
 
 permissions:
   id-token: write
@@ -12,8 +22,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Azure Login
         uses: azure/login@v2
@@ -22,87 +34,129 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Incremental APIM Export (Drift Detection)
+      - name: Export APIM Resources
         run: |
           set -e
 
           RG="${{ secrets.DEV_RG }}"
           APIM="${{ secrets.DEV_APIM }}"
+          SUB="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          TYPE="${{ github.event.inputs.export_type }}"
+          API_VERSION="2022-08-01"
 
-          BASE_DIR="export"
-          TEMP_DIR="temp_compare"
+          mkdir -p apim/service
+          mkdir -p apim/apis
+          mkdir -p apim/products
 
-          mkdir -p "$BASE_DIR/apis"
-          mkdir -p "$BASE_DIR/products"
-          mkdir -p "$BASE_DIR/policies"
-          mkdir -p "$TEMP_DIR/apis"
-          mkdir -p "$TEMP_DIR/products"
-          mkdir -p "$TEMP_DIR/policies"
+          ############################################
+          # SERVICE LEVEL EXPORT (REST)
+          ############################################
+          if [ "$TYPE" = "service" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Service-Level Components..."
 
-          echo "Checking APIs for changes..."
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/namedValues?api-version=$API_VERSION" \
+              > apim/service/named-values.json
 
-          apis=$(az apim api list \
-            --resource-group "$RG" \
-            --service-name "$APIM" \
-            --query "[].name" -o tsv)
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/backends?api-version=$API_VERSION" \
+              > apim/service/backends.json 2>/dev/null || true
 
-          for api in $apis; do
-            SAFE_API=$(echo "$api" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
+              > apim/service/groups.json
+          fi
 
-            az apim api show \
+          ############################################
+          # API EXPORT
+          ############################################
+          if [ "$TYPE" = "apis" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting APIs..."
+
+            APIS=$(az apim api list \
               --resource-group "$RG" \
               --service-name "$APIM" \
-              --api-id "$api" \
-              --output json > "$TEMP_DIR/apis/${SAFE_API}.txt"
+              --query "[].name" -o tsv)
 
-            az apim api policy show \
-              --resource-group "$RG" \
-              --service-name "$APIM" \
-              --api-id "$api" \
-              --format rawxml > "$TEMP_DIR/policies/${SAFE_API}-policy.txt" || true
+            for API in $APIS; do
+              SAFE_API=$(echo "$API" | tr '[:upper:]' '[:lower:]')
+              mkdir -p apim/apis/$SAFE_API
 
-            if [ ! -f "$BASE_DIR/apis/${SAFE_API}.txt" ]; then
-              echo "New API detected: $api"
-              cp "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt"
-            elif ! diff -q "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt" >/dev/null; then
-              echo "API changed: $api"
-              cp "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt"
-            fi
+              # API metadata
+              az apim api show \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --api-id "$API" \
+                -o json > "apim/apis/$SAFE_API/api.json"
 
-            if [ -f "$TEMP_DIR/policies/${SAFE_API}-policy.txt" ]; then
-              if [ ! -f "$BASE_DIR/policies/${SAFE_API}-policy.txt" ]; then
-                echo "New policy detected: $api"
-                cp "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt"
-              elif ! diff -q "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt" >/dev/null; then
-                echo "Policy changed: $api"
-                cp "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt"
+              # OpenAPI export
+              az apim api export \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --api-id "$API" \
+                --export-format OpenApiJsonFile \
+                --file-path "apim/apis/$SAFE_API"
+
+              GENERATED=$(find apim/apis/$SAFE_API -name "*openapi*.json" | head -n1)
+              [ -f "$GENERATED" ] && mv "$GENERATED" "apim/apis/$SAFE_API/openapi.json"
+
+              # POLICY EXPORT (Safe – skip if not exists)
+              POLICY_RESPONSE=$(az rest --method get \
+                --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/apis/$API/policies/policy?api-version=$API_VERSION" \
+                2>/dev/null || true)
+
+              if echo "$POLICY_RESPONSE" | jq -e '.properties.value' >/dev/null 2>&1; then
+                echo "$POLICY_RESPONSE" | jq -r '.properties.value' > "apim/apis/$SAFE_API/policy.xml"
+              else
+                echo "No policy found for $API"
               fi
-            fi
-          done
 
-          echo "Checking Products for changes..."
+            done
+          fi
 
-          products=$(az apim product list \
-            --resource-group "$RG" \
-            --service-name "$APIM" \
-            --query "[].name" -o tsv)
+          ############################################
+          # PRODUCT EXPORT
+          ############################################
+          if [ "$TYPE" = "products" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Products..."
 
-          for product in $products; do
-            SAFE_PRODUCT=$(echo "$product" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
-
-            az apim product show \
+            PRODUCTS=$(az apim product list \
               --resource-group "$RG" \
               --service-name "$APIM" \
-              --product-id "$product" \
-              --output json > "$TEMP_DIR/products/${SAFE_PRODUCT}.txt"
+              --query "[].name" -o tsv)
 
-            if [ ! -f "$BASE_DIR/products/${SAFE_PRODUCT}.txt" ]; then
-              echo "New Product detected: $product"
-              cp "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt"
-            elif ! diff -q "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt" >/dev/null; then
-              echo "Product changed: $product"
-              cp "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt"
-            fi
-          done
+            for PROD in $PRODUCTS; do
+              SAFE_PROD=$(echo "$PROD" | tr '[:upper:]' '[:lower:]')
+              mkdir -p apim/products/$SAFE_PROD
 
-          echo "Incremental export completed."
+              az apim product show \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --product-id "$PROD" \
+                -o json > "apim/products/$SAFE_PROD/product.json"
+
+              az apim product api list \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --product-id "$PROD" \
+                -o json > "apim/products/$SAFE_PROD/apis.json"
+            done
+          fi
+
+      ############################################
+      # COMMIT ONLY IF CHANGES EXIST
+      ############################################
+      - name: Commit Only If Changes Exist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add apim/
+
+          if git diff --cached --quiet; then
+            echo "No changes detected. Skipping commit."
+            exit 0
+          fi
+
+          git commit -m "APIM sync update"
+          git push
