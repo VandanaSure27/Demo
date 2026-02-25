@@ -16,10 +16,6 @@ on:
           - product
           - product-apis
           - all
-      target_branch:
-        description: "Branch to commit export (example: apim-exports)"
-        required: true
-        default: "apim-exports"
 
 permissions:
   id-token: write
@@ -33,7 +29,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for branch operations
+          fetch-depth: 0
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -42,7 +38,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Prepare Export Folder
+      - name: Create export folder
         run: mkdir -p export
 
       - name: Export from DEV APIM
@@ -95,34 +91,19 @@ jobs:
       - name: Verify Export
         run: ls -la export
 
-      # ✅ Upload as Workflow Artifact
-      - name: Upload APIM Export Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: apim-export-${{ github.run_number }}
-          path: export/
-          retention-days: 14
-
-      # ✅ Commit to Target Branch
-      - name: Commit Export to Branch
+      - name: Commit Exported Files
         run: |
           set -e
 
-          BRANCH="${{ github.event.inputs.target_branch }}"
+          CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+
+          echo "Committing to branch: $CURRENT_BRANCH"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Fetch branches
-          git fetch origin
-
-          # Create branch if not exists
-          if git show-ref --verify --quiet refs/remotes/origin/$BRANCH; then
-            git checkout "$BRANCH"
-          else
-            git checkout -b "$BRANCH"
-          fi
+          git checkout "$CURRENT_BRANCH"
 
           git add export/
           git commit -m "APIM export for ${{ github.event.inputs.api_or_product_id }}" || echo "No changes to commit"
-          git push origin "$BRANCH"
+          git push origin "$CURRENT_BRANCH"
