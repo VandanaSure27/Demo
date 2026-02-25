@@ -1,0 +1,39 @@
+{
+  "apiRevision": "1",
+  "apiRevisionDescription": null,
+  "apiType": null,
+  "apiVersion": null,
+  "apiVersionDescription": null,
+  "apiVersionSet": null,
+  "apiVersionSetId": null,
+  "authenticationSettings": {
+    "oAuth2": null,
+    "oAuth2AuthenticationSettings": [],
+    "openid": null,
+    "openidAuthenticationSettings": [],
+    "returnProtectedResourceMetadata": false
+  },
+  "contact": null,
+  "description": null,
+  "displayName": "Hello API",
+  "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/apis/hello-api",
+  "isCurrent": true,
+  "isOnline": null,
+  "license": null,
+  "name": "hello-api",
+  "path": "Hello",
+  "protocols": [
+    "http",
+    "https"
+  ],
+  "resourceGroup": "rg-logicapps-test",
+  "serviceUrl": null,
+  "sourceApiId": null,
+  "subscriptionKeyParameterNames": {
+    "header": "Ocp-Apim-Subscription-Key",
+    "query": "subscription-key"
+  },
+  "subscriptionRequired": true,
+  "termsOfServiceUrl": null,
+  "type": "Microsoft.ApiManagement/service/apis"
+}

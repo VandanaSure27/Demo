@@ -1,0 +1,31 @@
+[
+  {
+    "apiRevision": "1",
+    "apiRevisionDescription": null,
+    "apiType": null,
+    "apiVersion": null,
+    "apiVersionDescription": null,
+    "apiVersionSet": null,
+    "apiVersionSetId": null,
+    "authenticationSettings": null,
+    "contact": null,
+    "description": "Demo_GIT",
+    "displayName": "Order API",
+    "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/products/order-product/apis/order-api",
+    "isCurrent": true,
+    "isOnline": null,
+    "license": null,
+    "name": "order-api",
+    "path": "orders",
+    "protocols": [
+      "https"
+    ],
+    "resourceGroup": "rg-logicapps-test",
+    "serviceUrl": "https://testgithub-bgd6hdf9b6d4apbx.eastus-01.azurewebsites.net",
+    "sourceApiId": null,
+    "subscriptionKeyParameterNames": null,
+    "subscriptionRequired": true,
+    "termsOfServiceUrl": null,
+    "type": "Microsoft.ApiManagement/service/products/apis"
+  }
+]

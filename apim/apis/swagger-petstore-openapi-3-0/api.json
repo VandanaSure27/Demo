@@ -1,0 +1,45 @@
+{
+  "apiRevision": "1",
+  "apiRevisionDescription": null,
+  "apiType": null,
+  "apiVersion": null,
+  "apiVersionDescription": null,
+  "apiVersionSet": null,
+  "apiVersionSetId": null,
+  "authenticationSettings": {
+    "oAuth2": null,
+    "oAuth2AuthenticationSettings": [],
+    "openid": null,
+    "openidAuthenticationSettings": [],
+    "returnProtectedResourceMetadata": false
+  },
+  "contact": {
+    "email": "apiteam@swagger.io",
+    "name": null,
+    "url": null
+  },
+  "description": "This is a sample Pet Store Server based on the OpenAPI 3.0 specification.  You can find out more about\nSwagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we've switched to the design first approach!\nYou can now help us improve the API whether it's by making changes to the definition itself or to the code.\nThat way, with time, we can improve the API in general, and expose some of the new features in OAS3.\n\nSome useful links:\n- [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)\n- [The source API definition for the Pet Store](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)",
+  "displayName": "Swagger Petstore - OpenAPI 3.0",
+  "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/apis/swagger-petstore-openapi-3-0",
+  "isCurrent": true,
+  "isOnline": null,
+  "license": {
+    "name": "Apache 2.0",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+  },
+  "name": "swagger-petstore-openapi-3-0",
+  "path": "Petstore",
+  "protocols": [
+    "https"
+  ],
+  "resourceGroup": "rg-logicapps-test",
+  "serviceUrl": "https://petstore3.swagger.io/api/v3",
+  "sourceApiId": null,
+  "subscriptionKeyParameterNames": {
+    "header": "Ocp-Apim-Subscription-Key",
+    "query": "subscription-key"
+  },
+  "subscriptionRequired": true,
+  "termsOfServiceUrl": "https://swagger.io/terms/",
+  "type": "Microsoft.ApiManagement/service/apis"
+}
