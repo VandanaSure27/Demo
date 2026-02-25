@@ -11,6 +11,9 @@ on:
           - service
           - apis
           - products
+          - subscriptions
+          - groups
+          - tags
           - all
 
 permissions:
