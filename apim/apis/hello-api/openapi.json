@@ -2,6 +2,7 @@
     "openapi": "3.0.1",
     "info": {
         "title": "Hello API",
+        "description": "Demo_git_latest",
         "version": "1.0"
     },
     "servers": [

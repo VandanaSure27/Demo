@@ -14,7 +14,7 @@
     "returnProtectedResourceMetadata": false
   },
   "contact": null,
-  "description": null,
+  "description": "Demo_git_latest",
   "displayName": "Hello API",
   "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/apis/hello-api",
   "isCurrent": true,
