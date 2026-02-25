@@ -1,0 +1,108 @@
+name: Sync APIM Dev Export
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  export-apim:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Incremental APIM Export (Drift Detection)
+        run: |
+          set -e
+
+          RG="${{ secrets.DEV_RG }}"
+          APIM="${{ secrets.DEV_APIM }}"
+
+          BASE_DIR="apim/txt"
+          TEMP_DIR="temp_compare"
+
+          mkdir -p "$BASE_DIR/apis"
+          mkdir -p "$BASE_DIR/products"
+          mkdir -p "$BASE_DIR/policies"
+          mkdir -p "$TEMP_DIR/apis"
+          mkdir -p "$TEMP_DIR/products"
+          mkdir -p "$TEMP_DIR/policies"
+
+          echo "Checking APIs for changes..."
+
+          apis=$(az apim api list \
+            --resource-group "$RG" \
+            --service-name "$APIM" \
+            --query "[].name" -o tsv)
+
+          for api in $apis; do
+            SAFE_API=$(echo "$api" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
+
+            az apim api show \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --api-id "$api" \
+              --output json > "$TEMP_DIR/apis/${SAFE_API}.txt"
+
+            az apim api policy show \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --api-id "$api" \
+              --format rawxml > "$TEMP_DIR/policies/${SAFE_API}-policy.txt" || true
+
+            if [ ! -f "$BASE_DIR/apis/${SAFE_API}.txt" ]; then
+              echo "New API detected: $api"
+              cp "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt"
+            elif ! diff -q "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt" >/dev/null; then
+              echo "API changed: $api"
+              cp "$TEMP_DIR/apis/${SAFE_API}.txt" "$BASE_DIR/apis/${SAFE_API}.txt"
+            fi
+
+            if [ -f "$TEMP_DIR/policies/${SAFE_API}-policy.txt" ]; then
+              if [ ! -f "$BASE_DIR/policies/${SAFE_API}-policy.txt" ]; then
+                echo "New policy detected: $api"
+                cp "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt"
+              elif ! diff -q "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt" >/dev/null; then
+                echo "Policy changed: $api"
+                cp "$TEMP_DIR/policies/${SAFE_API}-policy.txt" "$BASE_DIR/policies/${SAFE_API}-policy.txt"
+              fi
+            fi
+          done
+
+          echo "Checking Products for changes..."
+
+          products=$(az apim product list \
+            --resource-group "$RG" \
+            --service-name "$APIM" \
+            --query "[].name" -o tsv)
+
+          for product in $products; do
+            SAFE_PRODUCT=$(echo "$product" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
+
+            az apim product show \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --product-id "$product" \
+              --output json > "$TEMP_DIR/products/${SAFE_PRODUCT}.txt"
+
+            if [ ! -f "$BASE_DIR/products/${SAFE_PRODUCT}.txt" ]; then
+              echo "New Product detected: $product"
+              cp "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt"
+            elif ! diff -q "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt" >/dev/null; then
+              echo "Product changed: $product"
+              cp "$TEMP_DIR/products/${SAFE_PRODUCT}.txt" "$BASE_DIR/products/${SAFE_PRODUCT}.txt"
+            fi
+          done
+
+          echo "Incremental export completed."
