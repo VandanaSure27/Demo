@@ -103,3 +103,11 @@ jobs:
           git add export/
           git commit -m "Auto export from DEV APIM" || echo "No changes detected"
           git push
+
+      - name: publish single API artifact
+        uses: actions/upload-artifact@v4
+        env:
+          SINGLE_API_OUTPUT_FOLDER_PATH: "Single API"   # destination folder
+        with:
+          name: single-api-artifacts
+          path: ${{ github.workspace }}/${{ env.SINGLE_API_OUTPUT_FOLDER_PATH }}
