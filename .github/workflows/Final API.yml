@@ -12,7 +12,6 @@ on:
           - apis
           - products
           - subscriptions
-          - groups
           - tags
           - all
 
@@ -55,7 +54,7 @@ jobs:
           echo "APIM         : $APIM"
           echo "=========================================="
 
-          mkdir -p apim/{service,apis,products,subscriptions,groups,tags}
+          mkdir -p apim/{service,apis,products,tags}
 
           ############################################
           # SERVICE LEVEL EXPORT
@@ -164,38 +163,7 @@ jobs:
             done
           fi
 
-          ############################################
-          # GROUPS EXPORT (Fully Safe Version)
-          ############################################
-          if [[ "$TYPE" == "groups" || "$TYPE" == "all" ]]; then
-            echo "Exporting Groups..."
-
-            set +e
-            RESPONSE=$(az rest --method get \
-              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
-              2>&1)
-            STATUS=$?
-            set -e
-
-            if [[ $STATUS -ne 0 ]]; then
-              echo "WARNING: Unable to fetch groups."
-              echo "$RESPONSE"
-            else
-              if echo "$RESPONSE" | jq empty >/dev/null 2>&1; then
-                GROUPS=$(echo "$RESPONSE" | jq -r '.value[]?.name // empty')
-                for GROUP in $GROUPS; do
-                  echo "Exporting group: $GROUP"
-                  az rest --method get \
-                    --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
-                    > "apim/groups/$GROUP.json" || echo "Failed exporting group $GROUP"
-                done
-              else
-                echo "Invalid JSON response while fetching groups."
-                echo "$RESPONSE"
-              fi
-            fi
-          fi
-
+         
           ############################################
           # TAGS EXPORT
           ############################################
