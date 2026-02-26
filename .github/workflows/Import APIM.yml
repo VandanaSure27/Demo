@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       ###########################################
-      # Federated Login (OIDC)
+      # Federated Azure Login (OIDC)
       ###########################################
       - name: Azure Login
         uses: azure/login@v2
@@ -85,7 +85,7 @@ jobs:
           fi
 
           ###########################################
-          # APIs (Import OpenAPI properly)
+          # APIs (FIXED PATH HANDLING)
           ###########################################
           if [[ "$TYPE" == "apis" || "$TYPE" == "all" ]]; then
             echo "Importing APIs..."
@@ -97,7 +97,14 @@ jobs:
 
               if [ -f "$DIR/openapi.json" ] && [ -f "$DIR/api.json" ]; then
 
-                API_PATH=$(jq -r '.properties.path' "$DIR/api.json")
+                # FIX: path is at root level
+                API_PATH=$(jq -r '.path // empty' "$DIR/api.json")
+
+                # Safety fallback if null or empty
+                if [[ -z "$API_PATH" || "$API_PATH" == "null" ]]; then
+                  echo "WARNING: API path missing for $API_ID. Using API_ID as fallback."
+                  API_PATH="$API_ID"
+                fi
 
                 echo "Importing API: $API_ID (path: $API_PATH)"
 
@@ -187,7 +194,7 @@ jobs:
           fi
 
           ###########################################
-          # SUBSCRIPTIONS (Keys already masked)
+          # SUBSCRIPTIONS
           ###########################################
           if [[ "$TYPE" == "subscriptions" || "$TYPE" == "all" ]]; then
             echo "Importing Subscriptions..."
