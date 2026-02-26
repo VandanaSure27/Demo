@@ -1,46 +1,217 @@
-name: APIM Dev Export
- 
+name: APIM Full Git Sync
+
 on:
   workflow_dispatch:
- 
+    inputs:
+      export_type:
+        description: "Select what to export"
+        required: true
+        type: choice
+        options:
+          - service
+          - apis
+          - products
+          - subscriptions
+          - groups
+          - tags
+          - all
+
 permissions:
   id-token: write
-  contents: write 
- 
+  contents: write
+
 jobs:
-  export-deploy:
-    runs-on: ubuntu-latest 
- 
+  export-apim:
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
- 
+        with:
+          fetch-depth: 0
+
       - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
- 
-      - name: Export API from DEV APIM 
+
+      - name: Export APIM Resources
         run: |
-          az apim api export \
-            --resource-group ${{ secrets.DEV_RG }} \
-            --service-name ${{ secrets.DEV_APIM }} \
-            --api-id ${{ vars.API_NAME }} \
-            --export-format OpenApiJsonFile \
-            --file-path infra/APIM
- 
-      - name: Verify Export
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Files:"
-          ls -la
-      - name: Commit exported API
+          set -e
+
+          RG="${{ secrets.DEV_RG }}"
+          APIM="${{ secrets.DEV_APIM }}"
+          SUB="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          TYPE="${{ github.event.inputs.export_type }}"
+          API_VERSION="2022-08-01"
+
+          mkdir -p apim/service
+          mkdir -p apim/apis
+          mkdir -p apim/products
+          mkdir -p apim/subscriptions
+          mkdir -p apim/groups
+          mkdir -p apim/tags
+
+
+          ############################################
+          # SERVICE LEVEL EXPORT (REST)
+          ############################################
+          if [ "$TYPE" = "service" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Service-Level Components..."
+
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/namedValues?api-version=$API_VERSION" \
+              > apim/service/named-values.json
+
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/backends?api-version=$API_VERSION" \
+              > apim/service/backends.json 2>/dev/null || true
+
+            az rest --method get \
+              --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
+              > apim/service/groups.json
+          fi
+
+          ############################################
+          # API EXPORT
+          ############################################
+          if [ "$TYPE" = "apis" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting APIs..."
+
+            APIS=$(az apim api list \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --query "[].name" -o tsv)
+
+            for API in $APIS; do
+              SAFE_API=$(echo "$API" | tr '[:upper:]' '[:lower:]')
+              mkdir -p apim/apis/$SAFE_API
+
+              # API metadata
+              az apim api show \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --api-id "$API" \
+                -o json > "apim/apis/$SAFE_API/api.json"
+
+              # OpenAPI export
+              az apim api export \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --api-id "$API" \
+                --export-format OpenApiJsonFile \
+                --file-path "apim/apis/$SAFE_API"
+
+              GENERATED=$(find apim/apis/$SAFE_API -name "*openapi*.json" | head -n1)
+              [ -f "$GENERATED" ] && mv "$GENERATED" "apim/apis/$SAFE_API/openapi.json"
+
+              # POLICY EXPORT (Safe – skip if not exists)
+              POLICY_RESPONSE=$(az rest --method get \
+                --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/apis/$API/policies/policy?api-version=$API_VERSION" \
+                2>/dev/null || true)
+
+              if echo "$POLICY_RESPONSE" | jq -e '.properties.value' >/dev/null 2>&1; then
+                echo "$POLICY_RESPONSE" | jq -r '.properties.value' > "apim/apis/$SAFE_API/policy.xml"
+              else
+                echo "No policy found for $API"
+              fi
+
+            done
+          fi
+
+          ############################################
+          # PRODUCT EXPORT
+          ############################################
+          if [ "$TYPE" = "products" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Products..."
+
+            PRODUCTS=$(az apim product list \
+              --resource-group "$RG" \
+              --service-name "$APIM" \
+              --query "[].name" -o tsv)
+
+            for PROD in $PRODUCTS; do
+              SAFE_PROD=$(echo "$PROD" | tr '[:upper:]' '[:lower:]')
+              mkdir -p apim/products/$SAFE_PROD
+
+              az apim product show \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --product-id "$PROD" \
+                -o json > "apim/products/$SAFE_PROD/product.json"
+
+              az apim product api list \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --product-id "$PROD" \
+                -o json > "apim/products/$SAFE_PROD/apis.json"
+            done
+           fi
+
+          ############################################
+          # SUBSCRIPTIONS EXPORT (ADDED)
+          ############################################
+          if [ "$TYPE" = "subscriptions" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Subscriptions..."
+
+              az rest --method get \
+                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/subscriptions?api-version=$API_VERSION" \
+                  > apim/subscriptions/subscriptions.json
+               fi
+               
+
+            ############################################
+            # GROUPS EXPORT (ADDED)
+            ############################################
+            if [ "$TYPE" = "groups" ] || [ "$TYPE" = "all" ]; then
+               echo "Exporting Groups..."
+
+                GROUPS=$(az rest --method get \
+                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
+                 | jq -r '.value[].name')
+
+               for GROUP in $GROUPS; do
+               az rest --method get \
+                  --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
+                  > "apim/groups/$GROUP.json"
+                 done
+               fi
+
+
+          ############################################
+          # TAGS EXPORT (ADDED)
+          ############################################
+          if [ "$TYPE" = "tags" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Tags..."
+
+  
+            TAGS=$(az rest --method get \
+             --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/tags?api-version=$API_VERSION" \
+             | jq -r '.value[].name')
+
+           for TAG in $TAGS; do
+          az rest --method get \
+           --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/tags/$TAG?api-version=$API_VERSION" \
+           > "apim/tags/$TAG.json"
+           done
+          fi
+
+      ############################################
+      # COMMIT ONLY IF CHANGES EXIST
+      ############################################
+      - name: Commit Only If Changes Exist
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add infra/APIM/
-          git commit -m "Auto export from DEV APIM" || echo "No changes"
+
+          git add apim/
+
+          if git diff --cached --quiet; then
+            echo "No changes detected. Skipping commit."
+            exit 0
+          fi
+
+          git commit -m "APIM sync update"
           git push
