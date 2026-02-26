@@ -165,26 +165,36 @@ jobs:
           fi
 
           ############################################
-          # GROUPS EXPORT (Safe)
+          # GROUPS EXPORT (Robust)
           ############################################
           if [[ "$TYPE" == "groups" || "$TYPE" == "all" ]]; then
             echo "Exporting Groups..."
 
+            set +e
             RESPONSE=$(az rest --method get \
               --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
-              2>/dev/null || true)
+              2>&1)
+            STATUS=$?
+            set -e
 
-            GROUPS=$(echo "$RESPONSE" | jq -r '.value[]?.name // empty')
+            if [[ $STATUS -ne 0 ]]; then
+              echo "WARNING: Unable to fetch groups."
+              echo "$RESPONSE"
+            else
+              GROUPS=$(echo "$RESPONSE" | jq -r '.value[]?.name // empty')
 
-            for GROUP in $GROUPS; do
-              az rest --method get \
-                --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
-                > "apim/groups/$GROUP.json"
-            done
+              for GROUP in $GROUPS; do
+                echo "Exporting group: $GROUP"
+
+                az rest --method get \
+                  --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
+                  > "apim/groups/$GROUP.json"
+              done
+            fi
           fi
 
           ############################################
-          # TAGS EXPORT (Safe)
+          # TAGS EXPORT
           ############################################
           if [[ "$TYPE" == "tags" || "$TYPE" == "all" ]]; then
             echo "Exporting Tags..."
