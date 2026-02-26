@@ -165,7 +165,7 @@ jobs:
           fi
 
           ############################################
-          # GROUPS EXPORT (Robust)
+          # GROUPS EXPORT (Fully Safe Version)
           ############################################
           if [[ "$TYPE" == "groups" || "$TYPE" == "all" ]]; then
             echo "Exporting Groups..."
@@ -181,15 +181,18 @@ jobs:
               echo "WARNING: Unable to fetch groups."
               echo "$RESPONSE"
             else
-              GROUPS=$(echo "$RESPONSE" | jq -r '.value[]?.name // empty')
-
-              for GROUP in $GROUPS; do
-                echo "Exporting group: $GROUP"
-
-                az rest --method get \
-                  --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
-                  > "apim/groups/$GROUP.json"
-              done
+              if echo "$RESPONSE" | jq empty >/dev/null 2>&1; then
+                GROUPS=$(echo "$RESPONSE" | jq -r '.value[]?.name // empty')
+                for GROUP in $GROUPS; do
+                  echo "Exporting group: $GROUP"
+                  az rest --method get \
+                    --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
+                    > "apim/groups/$GROUP.json" || echo "Failed exporting group $GROUP"
+                done
+              else
+                echo "Invalid JSON response while fetching groups."
+                echo "$RESPONSE"
+              fi
             fi
           fi
 
