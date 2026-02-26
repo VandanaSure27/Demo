@@ -23,8 +23,8 @@ on:
           - all
 
 permissions:
-  id-token: write
-  contents: write
+  id-token: write      # REQUIRED for OIDC
+  contents: read
 
 jobs:
   import-apim:
@@ -34,13 +34,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Azure Login (Target)
+      ###########################################
+      # FEDERATED LOGIN (OIDC)
+      ###########################################
+      - name: Azure Login (OIDC Federated)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.TARGET_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.TARGET_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.TARGET_AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Verify Login
+        run: az account show
+
+      ###########################################
+      # IMPORT COMPONENTS
+      ###########################################
       - name: Import Selected Components
         shell: bash
         run: |
@@ -48,7 +57,7 @@ jobs:
 
           RG="${{ github.event.inputs.target_rg }}"
           APIM="${{ github.event.inputs.target_apim }}"
-          SUB="${{ secrets.TARGET_AZURE_SUBSCRIPTION_ID }}"
+          SUB="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
           TYPE="${{ github.event.inputs.import_type }}"
           API_VERSION="2022-08-01"
 
@@ -153,6 +162,7 @@ jobs:
             echo "Importing Tags..."
 
             for FILE in apim/tags/*.json; do
+              [ -f "$FILE" ] || continue
               TAG=$(basename "$FILE" .json)
 
               az rest --method put \
@@ -168,6 +178,7 @@ jobs:
             echo "Importing Subscriptions..."
 
             for FILE in apim/subscriptions/*.json; do
+              [ -f "$FILE" ] || continue
               SUB_ID=$(basename "$FILE" .json)
 
               az rest --method put \
