@@ -1,8 +1,0 @@
-{
-  "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/tags/store",
-  "name": "store",
-  "properties": {
-    "displayName": "store"
-  },
-  "type": "Microsoft.ApiManagement/service/tags"
-}
