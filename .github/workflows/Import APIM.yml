@@ -1,11 +1,30 @@
-name: APIM Git Import to Target
+name: APIM Import to Target
 
 on:
   workflow_dispatch:
+    inputs:
+      target_rg:
+        description: "Target Resource Group"
+        required: true
+      target_apim:
+        description: "Target APIM Name"
+        required: true
+      import_type:
+        description: "Select components to import"
+        required: true
+        type: choice
+        options:
+          - service
+          - apis
+          - products
+          - policies
+          - subscriptions
+          - tags
+          - all
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   import-apim:
@@ -14,8 +33,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Azure Login (Target)
         uses: azure/login@v2
@@ -24,50 +41,50 @@ jobs:
           tenant-id: ${{ secrets.TARGET_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.TARGET_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Import to Target APIM
+      - name: Import Selected Components
         shell: bash
         run: |
           set -euo pipefail
 
-          RG="${{ secrets.TARGET_RG }}"
-          APIM="${{ secrets.TARGET_APIM }}"
+          RG="${{ github.event.inputs.target_rg }}"
+          APIM="${{ github.event.inputs.target_apim }}"
           SUB="${{ secrets.TARGET_AZURE_SUBSCRIPTION_ID }}"
+          TYPE="${{ github.event.inputs.import_type }}"
           API_VERSION="2022-08-01"
 
-          echo "========================================="
-          echo "Importing into Target:"
-          echo "RG   : $RG"
-          echo "APIM : $APIM"
-          echo "========================================="
+          echo "======================================"
+          echo "Target RG   : $RG"
+          echo "Target APIM : $APIM"
+          echo "Import Type : $TYPE"
+          echo "======================================"
 
-          ############################################
-          # SERVICE COMPONENTS
-          ############################################
-          if [ -d "apim/service" ]; then
-            echo "Importing Named Values..."
+          ###########################################
+          # SERVICE (Named Values)
+          ###########################################
+          if [[ "$TYPE" == "service" || "$TYPE" == "all" ]]; then
+            echo "Importing Service Components..."
+
             if [ -f "apim/service/named-values.json" ]; then
               jq -c '.value[]' apim/service/named-values.json | while read NV; do
                 NAME=$(echo "$NV" | jq -r '.name')
+
                 az rest --method put \
                   --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/namedValues/$NAME?api-version=$API_VERSION" \
-                  --body "$NV" \
-                  >/dev/null
+                  --body "$NV" >/dev/null
               done
             fi
           fi
 
-          ############################################
-          # APIs
-          ############################################
-          if [ -d "apim/apis" ]; then
+          ###########################################
+          # APIs (OpenAPI Import)
+          ###########################################
+          if [[ "$TYPE" == "apis" || "$TYPE" == "all" ]]; then
             echo "Importing APIs..."
 
             for DIR in apim/apis/*; do
               API_ID=$(basename "$DIR")
 
               if [ -f "$DIR/openapi.json" ]; then
-                echo "Importing API: $API_ID"
-
                 az apim api import \
                   --resource-group "$RG" \
                   --service-name "$APIM" \
@@ -75,9 +92,19 @@ jobs:
                   --path "$API_ID" \
                   --specification-format OpenApi \
                   --specification-path "$DIR/openapi.json" \
-                  --subscription-required false \
                   --overwrite true
               fi
+            done
+          fi
+
+          ###########################################
+          # API POLICIES
+          ###########################################
+          if [[ "$TYPE" == "policies" || "$TYPE" == "all" ]]; then
+            echo "Importing API Policies..."
+
+            for DIR in apim/apis/*; do
+              API_ID=$(basename "$DIR")
 
               if [ -f "$DIR/policy.xml" ]; then
                 az apim api policy import \
@@ -89,25 +116,23 @@ jobs:
             done
           fi
 
-          ############################################
+          ###########################################
           # PRODUCTS
-          ############################################
-          if [ -d "apim/products" ]; then
+          ###########################################
+          if [[ "$TYPE" == "products" || "$TYPE" == "all" ]]; then
             echo "Importing Products..."
 
             for DIR in apim/products/*; do
               PRODUCT_ID=$(basename "$DIR")
 
-              if [ -f "$DIR/product.json" ]; then
-                az apim product create \
-                  --resource-group "$RG" \
-                  --service-name "$APIM" \
-                  --product-id "$PRODUCT_ID" \
-                  --display-name "$PRODUCT_ID" \
-                  --subscription-required true \
-                  --state published \
-                  --approval-required false || true
-              fi
+              az apim product create \
+                --resource-group "$RG" \
+                --service-name "$APIM" \
+                --product-id "$PRODUCT_ID" \
+                --display-name "$PRODUCT_ID" \
+                --subscription-required true \
+                --state published \
+                --approval-required false || true
 
               if [ -f "$DIR/apis.json" ]; then
                 jq -r '.[].name' "$DIR/apis.json" | while read API_NAME; do
@@ -121,10 +146,10 @@ jobs:
             done
           fi
 
-          ############################################
+          ###########################################
           # TAGS
-          ############################################
-          if [ -d "apim/tags" ]; then
+          ###########################################
+          if [[ "$TYPE" == "tags" || "$TYPE" == "all" ]]; then
             echo "Importing Tags..."
 
             for FILE in apim/tags/*.json; do
@@ -132,25 +157,23 @@ jobs:
 
               az rest --method put \
                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/tags/$TAG?api-version=$API_VERSION" \
-                --body @"$FILE" \
-                >/dev/null
+                --body @"$FILE" >/dev/null || true
             done
           fi
 
-          ############################################
-          # SUBSCRIPTIONS (Masked - recreate)
-          ############################################
-          if [ -d "apim/subscriptions" ]; then
-            echo "Creating Subscriptions..."
+          ###########################################
+          # SUBSCRIPTIONS
+          ###########################################
+          if [[ "$TYPE" == "subscriptions" || "$TYPE" == "all" ]]; then
+            echo "Importing Subscriptions..."
 
             for FILE in apim/subscriptions/*.json; do
               SUB_ID=$(basename "$FILE" .json)
 
               az rest --method put \
                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/subscriptions/$SUB_ID?api-version=$API_VERSION" \
-                --body @"$FILE" \
-                >/dev/null || true
+                --body @"$FILE" >/dev/null || true
             done
           fi
 
-          echo "Import Completed Successfully."
+          echo "Import completed successfully."
