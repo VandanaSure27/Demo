@@ -50,6 +50,10 @@ jobs:
           mkdir -p apim/service
           mkdir -p apim/apis
           mkdir -p apim/products
+          mkdir -p apim/subscriptions
+          mkdir -p apim/groups
+          mkdir -p apim/tags
+
 
           ############################################
           # SERVICE LEVEL EXPORT (REST)
@@ -144,6 +148,54 @@ jobs:
                 --product-id "$PROD" \
                 -o json > "apim/products/$SAFE_PROD/apis.json"
             done
+           fi
+
+          ############################################
+          # SUBSCRIPTIONS EXPORT (ADDED)
+          ############################################
+          if [ "$TYPE" = "subscriptions" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Subscriptions..."
+
+              az rest --method get \
+                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/subscriptions?api-version=$API_VERSION" \
+                  > apim/subscriptions/subscriptions.json
+               fi
+               
+
+            ############################################
+            # GROUPS EXPORT (ADDED)
+            ############################################
+            if [ "$TYPE" = "groups" ] || [ "$TYPE" = "all" ]; then
+               echo "Exporting Groups..."
+
+                GROUPS=$(az rest --method get \
+                 --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups?api-version=$API_VERSION" \
+                 | jq -r '.value[].name')
+
+               for GROUP in $GROUPS; do
+               az rest --method get \
+                  --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/groups/$GROUP?api-version=$API_VERSION" \
+                  > "apim/groups/$GROUP.json"
+                 done
+               fi
+
+
+          ############################################
+          # TAGS EXPORT (ADDED)
+          ############################################
+          if [ "$TYPE" = "tags" ] || [ "$TYPE" = "all" ]; then
+            echo "Exporting Tags..."
+
+  
+            TAGS=$(az rest --method get \
+             --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/tags?api-version=$API_VERSION" \
+             | jq -r '.value[].name')
+
+           for TAG in $TAGS; do
+          az rest --method get \
+           --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ApiManagement/service/$APIM/tags/$TAG?api-version=$API_VERSION" \
+           > "apim/tags/$TAG.json"
+           done
           fi
 
       ############################################
