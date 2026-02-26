@@ -1,0 +1,17 @@
+{
+  "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/subscriptions/master",
+  "name": "master",
+  "properties": {
+    "allowTracing": false,
+    "createdDate": "2026-02-12T05:51:02.067Z",
+    "displayName": "Built-in all-access subscription",
+    "endDate": null,
+    "expirationDate": null,
+    "notificationDate": null,
+    "scope": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/",
+    "startDate": null,
+    "state": "active",
+    "stateComment": null
+  },
+  "type": "Microsoft.ApiManagement/service/subscriptions"
+}

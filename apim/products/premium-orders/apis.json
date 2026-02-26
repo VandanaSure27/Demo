@@ -38,7 +38,7 @@
     "apiVersionSetId": null,
     "authenticationSettings": null,
     "contact": null,
-    "description": "Demo_GIT",
+    "description": "Demo_GIT_latest",
     "displayName": "Order API",
     "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/products/premium-orders/apis/order-api",
     "isCurrent": true,
