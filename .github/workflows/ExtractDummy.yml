@@ -1,0 +1,106 @@
+name: Extract APIM Settings
+
+on:
+  workflow_dispatch:
+    inputs:
+      apim_name:
+        description: 'Source APIM Name'
+        required: true 
+        default: 'SW-apim-dev-test'
+      resource_group:
+        description: 'Resource Group Name'
+        required: true
+      resource_type:
+        description: 'Type of resource to export (api, product, policy)'
+        required: true
+        default: 'api'
+      resource_name:
+        description: 'Name/ID of the resource (e.g., my-api)'
+        required: true
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      AZURE_RESOURCE_GROUP_NAME: ${{ inputs.resource_group }}
+      API_MANAGEMENT_SERVICE_NAME: ${{ inputs.apim_name }}
+      API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH: 'apim_artifacts'
+      API_SPECIFICATION_FORMAT: 'OpenAPIV3Yaml'
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Azure Context Variables
+        run: |
+          SUB_ID=$(az account show --query id -o tsv)
+          echo "AZURE_SUBSCRIPTION_ID=$SUB_ID" >> $GITHUB_ENV
+          TENANT_ID=$(az account show --query tenantId -o tsv)
+          echo "AZURE_TENANT_ID=$TENANT_ID" >> $GITHUB_ENV
+          TOKEN=$(az account get-access-token --query accessToken -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "AZURE_BEARER_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Fetch Latest APIOps Extractor
+        run: |
+          gh release download --repo Azure/apiops --pattern "extractor-linux-x64.zip" --clobber
+          unzip -o extractor-linux-x64.zip -d extractor_tool
+          chmod +x extractor_tool/extractor
+
+      - name: Run Extractor (Selective)
+        run: |
+          case "${{ inputs.resource_type }}" in
+            api)
+              ./extractor_tool/extractor \
+                --sourceApimName ${{ inputs.apim_name }} \
+                --resourceGroup ${{ inputs.resource_group }} \
+                --apiName ${{ inputs.resource_name }} \
+                --token $AZURE_BEARER_TOKEN \
+                --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
+              ;;
+            product)
+              ./extractor_tool/extractor \
+                --sourceApimName ${{ inputs.apim_name }} \
+                --resourceGroup ${{ inputs.resource_group }} \
+                --productName ${{ inputs.resource_name }} \
+                --token $AZURE_BEARER_TOKEN \
+                --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
+              ;;
+            policy)
+              ./extractor_tool/extractor \
+                --sourceApimName ${{ inputs.apim_name }} \
+                --resourceGroup ${{ inputs.resource_group }} \
+                --apiName ${{ inputs.resource_name }} \
+                --extractApiPolicy true \
+                --token $AZURE_BEARER_TOKEN \
+                --outputFolder $API_MANAGEMENT_SERVICE_OUTPUT_FOLDER_PATH
+              ;;
+          esac
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH_NAME="Feature-${{ inputs.apim_name }}-${{ inputs.resource_type }}-$(date +%Y%m%d%H%M)"
+          git checkout -b $BRANCH_NAME
+          git add apim_artifacts
+          if git diff --staged --quiet; then
+            echo "No changes detected."
+          else
+            git commit -m "Extract APIM settings from ${{ inputs.apim_name }}"
+            git push origin $BRANCH_NAME
+            echo "::notice::Extraction complete! Check branch '$BRANCH_NAME' for your files."
+          fi
