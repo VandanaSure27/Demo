@@ -54,7 +54,7 @@ jobs:
           echo "APIM         : $APIM"
           echo "=========================================="
 
-          mkdir -p apim/{service,apis,products,tags}
+          mkdir -p apim/{service,apis,products,subscriptions,tags}
 
           ############################################
           # SERVICE LEVEL EXPORT
