@@ -1,0 +1,18 @@
+{
+  "id": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/subscriptions/Producttest",
+  "name": "Producttest",
+  "properties": {
+    "allowTracing": false,
+    "createdDate": "2026-02-13T09:26:10.47Z",
+    "displayName": "Product Order Product subscription",
+    "endDate": null,
+    "expirationDate": null,
+    "notificationDate": null,
+    "ownerId": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/users/1",
+    "scope": "/subscriptions/f654ae1e-a7e6-4898-bdf3-f1cce60417ae/resourceGroups/rg-logicapps-test/providers/Microsoft.ApiManagement/service/SW-apim-dev-test/products/order-product",
+    "startDate": "2026-02-13T00:00:00Z",
+    "state": "active",
+    "stateComment": null
+  },
+  "type": "Microsoft.ApiManagement/service/subscriptions"
+}
